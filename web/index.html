@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RESCUE SYSTEM | SMART EMERGENCY SYSTEM</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <header class="top-nav">
+    <div class="nav-left">
+      <span class="logo-text">RESCUE SYSTEM</span>
+    </div>
+    <div class="nav-right">
+      <span class="system-tag">SMART EMERGENCY SYSTEM</span>
+      <span class="status-indicator" id="dbStatusBadge" title="MySQL Database Status">Database: MySQL 8.0</span>
+      <span class="live-clock" id="systemClock">00:00:00</span>
+    </div>
+  </header>
+
+  <div class="layout-wrapper">
+
+    <aside class="sidebar">
+      <nav class="sidebar-menu">
+        <button class="nav-item active" data-view="home">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+          </svg>
+          <span>Home</span>
+        </button>
+
+        <button class="nav-item" data-view="report">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <span>Report Incident</span>
+        </button>
+
+        <button class="nav-item" data-view="control">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+          <span>Control Room</span>
+        </button>
+
+        <button class="nav-item" data-view="units">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+          </svg>
+          <span>Response Units</span>
+        </button>
+
+        <button class="nav-item" data-view="network">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="18" cy="5" r="3"></circle>
+            <circle cx="6" cy="12" r="3"></circle>
+            <circle cx="18" cy="19" r="3"></circle>
+            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+          </svg>
+          <span>Road Network</span>
+        </button>
+
+        <button class="nav-item" data-view="history">
+          <svg class="nav-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>Mission History</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="station-meta">
+          <span class="station-label">MUNICIPALITY</span>
+          <span class="station-name">Town of Sudar</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+
+      <!-- Toast Notifications -->
+      <div id="toastContainer" class="toast-container"></div>
+
+      <!-- ================================================================
+           VIEW 1: HOME (MATCHES SCREENSHOT)
+           ================================================================ -->
+      <section id="viewHome" class="content-view">
+        <!-- Hero Banner Card (Matches Screenshot) -->
+        <div class="hero-card">
+          <h1>Fire &amp; Rescue<br>Response System</h1>
+    
+          <div class="hero-actions">
+            <button class="btn btn-hero-danger" id="heroReportBtn">Report an Incident</button>
+            <button class="btn btn-hero-dark" id="heroControlBtn">Open Control Room</button>
+          </div>
+        </div>
+
+        <!-- System Overview Section (Matches Screenshot) -->
+        <div class="overview-section">
+          <h2 class="section-title">System Overview</h2>
+
+          <!-- 4 White Metric Cards (Matches Screenshot) -->
+          <div class="overview-grid">
+            <div class="metric-card">
+              <span class="metric-label">Total Incidents</span>
+              <span class="metric-number" id="statTotalIncidents">0</span>
+            </div>
+
+            <div class="metric-card">
+              <span class="metric-label">Pending Alerts</span>
+              <span class="metric-number" id="statPending">0</span>
+            </div>
+
+            <div class="metric-card">
+              <span class="metric-label">Available Units</span>
+              <span class="metric-number" id="statAvailableUnits">4</span>
+            </div>
+
+            <div class="metric-card">
+              <span class="metric-label">Active Missions</span>
+              <span class="metric-number" id="statDispatched">0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fast Control Room Dispatch Block (Immediately below overview) -->
+        <div class="control-room-panel" id="controlRoomAnchor">
+          <div class="panel-header-row">
+            <div>
+              <h3 class="panel-title">Automated Dispatch Terminal</h3>
+              <p class="panel-subtitle">Dijkstra Shortest Path &amp; PriorityQueue Resource Allocation</p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button id="simulateSurgeBtn" type="button" class="btn btn-secondary" style="font-weight:700;">
+                Simulate Multi-Incident Surge
+              </button>
+              <button id="dispatchBtn" class="btn btn-dispatch">
+                Dispatch Highest-Priority Incident
+              </button>
+            </div>
+          </div>
+
+          <div id="dispatchStatusMsg" class="dispatch-msg-box"></div>
+
+          <!-- Calculated Telemetry Display -->
+          <div class="telemetry-wrapper" id="telemetryDisplay">
+            <div class="telemetry-empty" id="telemetryPlaceholder">
+              <!-- <span>Awaiting dispatch trigger. Click "Dispatch Highest-Priority Incident" to allocate the nearest compatible unit via Dijkstra.</span> -->
+            </div>
+
+            <div class="telemetry-active hidden" id="telemetryContent">
+              <div class="telemetry-metrics">
+                <div class="tel-item">
+                  <span class="tel-lbl">Assigned Vehicle</span>
+                  <span class="tel-val highlight" id="telUnitCode">FE-01</span>
+                  <span class="tel-sub" id="telUnitType">Fire Engine</span>
+                </div>
+                <div class="tel-item">
+                  <span class="tel-lbl">Base Station</span>
+                  <span class="tel-val" id="telStation">Station-A</span>
+                  <span class="tel-sub">Departure Node</span>
+                </div>
+                <div class="tel-item">
+                  <span class="tel-lbl">Target Incident</span>
+                  <span class="tel-val warning" id="telIncidentCode">INC-101</span>
+                  <span class="tel-sub" id="telTargetLoc">Hospital</span>
+                </div>
+                <div class="tel-item">
+                  <span class="tel-lbl">Dijkstra Travel Time</span>
+                  <span class="tel-val success" id="telTravelTime">-- mins</span>
+                  <span class="tel-sub">Minimal Graph Route</span>
+                </div>
+                <div class="tel-item">
+                  <span class="tel-lbl">Live Mission ETA</span>
+                  <span class="tel-val" id="telCountdown" style="color:#f59e0b; font-family:var(--font-mono); font-size:16px;">--:--</span>
+                  <span class="tel-sub" id="telCountdownStatus">Transit En Route</span>
+                </div>
+              </div>
+
+              <!-- Live Mission Progress Bar -->
+              <div class="mission-progress-container" id="telProgressBarWrap">
+                <div class="mission-progress-track">
+                  <div id="telProgressBar" class="mission-progress-fill"></div>
+                </div>
+              </div>
+
+              <div class="route-box" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                <div style="flex:1; min-width:260px;">
+                  <span class="route-heading">Dijkstra Shortest-Path Route:</span>
+                  <div class="route-breadcrumbs" id="telRouteBreadcrumbs"></div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnTrackOnMap" style="font-weight:700;">
+                  Live Track on Town Map &rarr;
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Priority Queue Quick Preview -->
+        <div class="content-card">
+          <div class="panel-header-row">
+            <h3 class="panel-title">Prioritized Incident Queue (Top Pending)</h3>
+            <button class="btn btn-secondary btn-sm" id="viewAllIncidentsBtn">View All in Queue &rarr;</button>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Priority</th>
+                  <th>Incident ID</th>
+                  <th>Location</th>
+                  <th>Type</th>
+                  <th>Intensity</th>
+                  <th>Critical</th>
+                  <th>Pop.</th>
+                  <th>Equipment</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="homeIncidentTbody">
+                <tr><td colspan="9" class="loading-cell">Loading priority queue...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           VIEW 2: REPORT INCIDENT
+           ================================================================ -->
+      <section id="viewReport" class="content-view hidden">
+        <div class="report-form-wrapper">
+          
+          <form id="incidentForm" class="styled-form-grid">
+            <!-- Row 1: Incident Location (Mandatory - Selected from App / Road Network Map) -->
+            <div class="form-row-1">
+              <div class="form-group">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                  <label>Incident Location <span style="color:var(--brand-red); font-weight:bold;">*</span></label>
+                  <button type="button" class="btn btn-secondary btn-sm" id="pickOnMapBtn" style="padding:4px 12px; font-size:12px; font-weight:600;">
+                    Pick Directly on Road Network Map &rarr;
+                  </button>
+                </div>
+
+                <!-- Selected Location Display (No Dropdown Options) -->
+                <div id="selectedLocationDisplay" class="selected-location-box">
+                  <span class="loc-status-label">Selected:</span>
+                  <span id="selectedLocationName" class="loc-name-highlight">None Selected &mdash; Click a location below or pick from Road Network map</span>
+                  <input type="hidden" id="locationInput" name="location" value="" required>
+                </div>
+
+                <!-- Interactive Clickable Location Badges (Select Directly in App) -->
+                <div class="location-chips-grid" id="locationChipsContainer">
+                  <!-- Generated dynamically by app.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Row 2: Critical Infrastructure & Population Exposure -->
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="criticalInfraSelect">Critical Infrastructure</label>
+                <select id="criticalInfraSelect" name="critical">
+                  <option value="Unknown" selected>Unknown</option>
+                  <option value="No">No</option>
+                  <option value="Yes">Yes</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="populationExposureSelect">Population Exposure</label>
+                <select id="populationExposureSelect" name="population">
+                  <option value="Unknown" selected>Unknown</option>
+                  <option value="Low">Low</option>
+                  <option value="Moderate">Moderate</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Row 3: Smoke & People Trapped / At Risk -->
+            <div class="form-row-2">
+              <div class="form-group">
+                <label for="smokeSelect">Smoke</label>
+                <select id="smokeSelect" name="smoke">
+                  <option value="Unknown" selected>Unknown</option>
+                  <option value="None">None</option>
+                  <option value="Light Smoke">Light Smoke</option>
+                  <option value="Heavy Black Smoke">Heavy Black Smoke</option>
+                  <option value="Dense Toxic Fumes">Dense Toxic Fumes</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label for="trappedSelect">People Trapped / At Risk</label>
+                <select id="trappedSelect" name="trapped">
+                  <option value="Unknown" selected>Unknown</option>
+                  <option value="None Confirmed">None Confirmed</option>
+                  <option value="Possible (1-2 persons)">Possible (1-2 persons)</option>
+                  <option value="Confirmed Multiple Trapped">Confirmed Multiple Trapped</option>
+                  <option value="High Risk / Evacuation Blocked">High Risk / Evacuation Blocked</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Disclaimer Notice Alert -->
+            
+
+            <!-- Submit Button -->
+            <div class="form-submit-row">
+              <button type="submit" id="submitIncidentBtn" class="btn btn-assess-register">
+                Assess &amp; Register Incident
+              </button>
+              <span id="formFeedback" class="form-status-msg"></span>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           VIEW: CONTROL ROOM (MATCHES media_1791740065384.png)
+           ================================================================ -->
+      <section id="viewControl" class="content-view hidden">
+        <div class="content-card">
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Control Room Dashboard</h2>
+          <!-- <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px;">Review the queue and dispatch available compatible units.</p> -->
+          <div style="margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <button id="dispatchAllBtn" class="btn btn-assess-register">Assess &amp; Dispatch Pending Incidents</button>
+            <span id="controlDispatchFeedback" style="font-size:12.5px;font-weight:600;"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Location</th>
+                  <th>Risk</th>
+                  <th>Equipment</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="controlIncidentRows">
+                <tr><td colspan="6" class="loading-cell">Loading pending incidents...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           VIEW: RESPONSE UNITS (MATCHES media_1791740063258.png)
+           ================================================================ -->
+      <section id="viewUnits" class="content-view hidden">
+        <div class="content-card">
+          <h2 style="font-size:22px;font-weight:700;margin-bottom:18px;">Response Units</h2>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Unit</th>
+                  <th>Station</th>
+                  <th>Position</th>
+                  <th>Equipment</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="unitRows">
+                <tr><td colspan="5" class="loading-cell">Loading response units...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           VIEW 4: ROAD NETWORK
+           ================================================================ -->
+      <section id="viewNetwork" class="content-view hidden">
+        <div class="view-header">
+          <h2> Town Road Network</h2>
+          <!-- <p>Weighted graph of road segments and positive travel times in minutes used by Dijkstra's algorithm.</p> -->
+        </div>
+
+        <div class="content-card">
+          <!-- <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:10px 14px; margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <!-- <span style="font-size:12.5px; color:#1e40af; font-weight:600;">
+              Interactive Map: Click on any town node below on the map to immediately report an emergency incident at that location.
+            </span> -->
+            <!-- <span style="font-size:11px; background:#dbeafe; color:#1e40af; padding:3px 8px; border-radius:4px; font-weight:700;">CLICK-TO-REPORT ENABLED</span> -->
+          </div> 
+
+          <div class="map-legend-row">
+            <span class="legend-chip"><span class="chip-color red"></span> Fire Station</span>
+            <span class="legend-chip"><span class="chip-color blue"></span> Road Junction</span>
+            <span class="legend-chip"><span class="chip-color green"></span> Public Facility</span>
+            <span class="legend-chip"><span class="chip-color amber"></span> Active Route</span>
+            <span class="legend-chip"><span class="chip-color" style="background:#ef4444; box-shadow:0 0 6px #ef4444;"></span> Live Vehicle Tracker</span>
+          </div>
+
+          <!-- Live Mission Tracking Banner (Feature A & C) -->
+          <div id="mapMissionBanner" class="map-mission-banner hidden">
+            <div class="mission-banner-left">
+              <span class="pulse-beacon"></span>
+              <span id="mapMissionBannerText" class="mission-banner-text">ACTIVE MISSION: Navigating to destination...</span>
+            </div>
+            <div class="mission-banner-right">
+              <span id="mapMissionEtaText" class="mission-banner-eta">ETA: --:--</span>
+              <button id="mapCompleteMissionBtn" class="btn btn-sm btn-complete-action">Mark Mission Completed</button>
+            </div>
+          </div>
+
+          <div class="svg-container">
+            <svg id="roadMapSvg" viewBox="0 0 880 480" class="town-svg"></svg>
+          </div>
+
+          <!-- Road Closure Simulation Block -->
+          <div class="road-closure-box">
+            <div class="closure-label-group">
+              <strong>Road Closure Simulation Sandbox</strong>
+              <!-- <small>Simulate road blocks to test dynamic Dijkstra bypass recalculation.</small> -->
+            </div>
+
+            <div class="closure-action-row">
+              <select id="roadClosureSelect">
+                <option value="">Select road segment...</option>
+              </select>
+              <button id="toggleRoadBtn" class="btn btn-secondary btn-sm">Toggle Road Closure</button>
+              <span id="roadToggleFeedback" class="closure-feedback"></span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+           VIEW 5: MISSION HISTORY
+           ================================================================ -->
+      <section id="viewHistory" class="content-view hidden">
+        <div class="view-header">
+          <h2>Mission History &amp; Audit Logs</h2>
+          <!-- <p>Persistent record of all dispatched emergency units, travel times, and resolution logs stored in MySQL.</p> -->
+        </div>
+
+        <div class="content-card">
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Incident ID</th>
+                  <th>Unit</th>
+                  <th>Departure &rarr; Destination</th>
+                  <th>Calculated Route</th>
+                  <th>Travel Time</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody">
+                <tr><td colspan="7" class="loading-cell">Loading mission logs...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
