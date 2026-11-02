@@ -1354,3 +1354,12 @@ body {
   pointer-events: none;
   filter: drop-shadow(0 0 8px rgba(254, 240, 138, 0.4));
 }
+
+.map-action-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}

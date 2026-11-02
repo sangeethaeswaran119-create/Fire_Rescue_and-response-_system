@@ -368,6 +368,11 @@ function initEventListeners() {
     pauseBtn.addEventListener("click", toggleMissionPause);
   }
 
+  const demoRunBtn = $("btnDemoRunTransit");
+  if (demoRunBtn) {
+    demoRunBtn.addEventListener("click", runDemoTransit);
+  }
+
   [1, 2, 4].forEach(spd => {
     const btn = $("btnSpeed" + spd + "x");
     if (btn) {
@@ -414,6 +419,8 @@ async function loadAllData() {
     loadHistory(),
     loadRoadNetwork()
   ]);
+  renderSvgMap();
+  updateLiveMissionTimers();
 }
 
 // --- System Status & Metrics ---
@@ -1138,7 +1145,7 @@ function drawLiveVehicleMarker(svg) {
   if (ping) ping.setAttribute("stroke", isArrived ? "#10b981" : "#ef4444");
   if (pillRect) pillRect.setAttribute("stroke", isArrived ? "#10b981" : "#f59e0b");
   if (pillText) {
-    pillText.textContent = isArrived ? "ON SCENE" : `${activeMissionTracker.unitCode} • ${liveSpeedKmh} km/h`;
+    pillText.textContent = isArrived ? "ON SCENE" : `${activeMissionTracker.unitCode} [${liveSpeedKmh} km/h] km/h`;
   }
 
   // Continue smooth 60fps frame loop while in transit
@@ -1298,6 +1305,42 @@ function replayVehicleTransit() {
   showToast(`Replaying complete Dijkstra path tracking for ${activeMissionTracker.unitCode}.`, "success");
 }
 
+// --- Demo Vehicle Transit Runner (Instant Visual Impact) ---
+function runDemoTransit() {
+  activeRoutePath = ["Station-A", "Junction-1", "Market", "Hospital"];
+  activeMissionTracker = {
+    incidentId: 999,
+    incidentCode: "DEMO-RUN",
+    unitCode: "FE-01",
+    unitType: "Fire Engine",
+    startLocation: "Station-A",
+    targetLocation: "Hospital",
+    travelTimeMinutes: 7,
+    durationSeconds: 22,
+    startTimeMs: Date.now(),
+    lastFrameMs: Date.now(),
+    accumulatedTransitMs: 0,
+    speedMultiplier: 1.0,
+    isPaused: false,
+    path: ["Station-A", "Junction-1", "Market", "Hospital"],
+    completed: false
+  };
+
+  const pauseBtn = $("mapPauseResumeBtn");
+  if (pauseBtn) pauseBtn.textContent = "Pause";
+
+  switchView("network");
+  const mapSvg = $("roadMapSvg");
+  if (mapSvg) {
+    renderSvgMap();
+    mapSvg.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  updateLiveMissionTimers();
+  showToast("Running animated vehicle movement demonstration (Feature A) across Sudar Town.", "info");
+}
+
+window.runDemoTransit = runDemoTransit;
 window.replayVehicleTransit = replayVehicleTransit;
 window.setTrackingSpeed = setTrackingSpeed;
 window.toggleMissionPause = toggleMissionPause;
