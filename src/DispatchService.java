@@ -254,7 +254,8 @@ public class DispatchService {
             activeRecord.setStatus("COMPLETED");
             ResponseUnit unit = unitMap.get(activeRecord.getUnitCode());
             if (unit != null) {
-                unit.completeMission(activeRecord.getTargetLocation());
+                String baseStation = (unit.getStationName() != null && unit.getStationName().contains("North")) ? "Station-B" : "Station-A";
+                unit.completeMission(baseStation);
                 if (dbManager.isConnected()) {
                     dbManager.updateUnitStatusAndLocation(unit.getUnitCode(), "AVAILABLE", unit.getCurrentLocation());
                 }

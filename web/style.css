@@ -1274,3 +1274,83 @@ body {
 .traversed-path-glow {
   filter: drop-shadow(0 0 6px #10b981);
 }
+
+.speed-control-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.speed-label {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+  margin-right: 2px;
+}
+
+.btn-speed-pill {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-speed-pill:hover {
+  color: #ffffff;
+}
+
+.btn-speed-pill.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.waypoints-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.live-speed-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+/* Siren strobes */
+.siren-flash-red {
+  animation: flashRed 0.6s infinite alternate;
+}
+
+.siren-flash-blue {
+  animation: flashBlue 0.6s infinite alternate;
+}
+
+@keyframes flashRed {
+  0% { fill: #ef4444; opacity: 1; filter: drop-shadow(0 0 4px #ef4444); }
+  100% { fill: #7f1d1d; opacity: 0.3; }
+}
+
+@keyframes flashBlue {
+  0% { fill: #1d4ed8; opacity: 0.3; }
+  100% { fill: #38bdf8; opacity: 1; filter: drop-shadow(0 0 4px #38bdf8); }
+}
+
+.vehicle-headlight-beam {
+  pointer-events: none;
+  filter: drop-shadow(0 0 8px rgba(254, 240, 138, 0.4));
+}

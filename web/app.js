@@ -277,7 +277,7 @@ function initEventListeners() {
         }
 
         const travelTime = res.travelTimeMinutes || 5;
-        const demoDurationSec = Math.max(22, Math.min(45, Math.round(travelTime * 3.5)));
+        const demoDurationSec = Math.max(25, Math.min(60, Math.round(travelTime * 3.5)));
         activeRoutePath = res.path || [];
         activeMissionTracker = {
           incidentId: res.incidentId,
@@ -289,20 +289,24 @@ function initEventListeners() {
           travelTimeMinutes: travelTime,
           durationSeconds: demoDurationSec,
           startTimeMs: Date.now(),
+          lastFrameMs: Date.now(),
+          accumulatedTransitMs: 0,
+          speedMultiplier: 1.0,
+          isPaused: false,
           path: res.path || [],
           completed: false
         };
-
-        updateLiveMissionTimers();
-        await loadAllData();
-        await loadControlRoom();
 
         // Switch to Road Network view immediately for complete live path tracking
         switchView("network");
         const mapSvg = $("roadMapSvg");
         if (mapSvg) {
+          renderSvgMap();
           mapSvg.scrollIntoView({ behavior: "smooth", block: "center" });
         }
+        updateLiveMissionTimers();
+        loadAllData();
+        loadControlRoom();
         showToast(`Assigned ${res.unitCode} to ${res.location}. Switched to Road Network for live path tracking.`, "success");
       } catch (err) {
         if (feedback) {
@@ -348,7 +352,7 @@ function initEventListeners() {
     });
   }
 
-  // Replay buttons
+  // Replay and Speed / Pause Controls
   const mapReplayBtn = $("mapReplayRouteBtn");
   if (mapReplayBtn) {
     mapReplayBtn.addEventListener("click", replayVehicleTransit);
@@ -358,6 +362,20 @@ function initEventListeners() {
   if (homeReplayBtn) {
     homeReplayBtn.addEventListener("click", replayVehicleTransit);
   }
+
+  const pauseBtn = $("mapPauseResumeBtn");
+  if (pauseBtn) {
+    pauseBtn.addEventListener("click", toggleMissionPause);
+  }
+
+  [1, 2, 4].forEach(spd => {
+    const btn = $("btnSpeed" + spd + "x");
+    if (btn) {
+      btn.addEventListener("click", () => {
+        setTrackingSpeed(spd);
+      });
+    }
+  });
 
   // Map Active Mission Complete Button (Feature C)
   const mapCompleteBtn = $("mapCompleteMissionBtn");
@@ -540,7 +558,7 @@ async function handleDispatchSingle(incidentId) {
   try {
     const res = await fetchJson("/api/dispatch", { method: "POST" });
     const travelTime = res.travelTimeMinutes || 5;
-    const demoDurationSec = Math.max(22, Math.min(45, Math.round(travelTime * 3.5)));
+    const demoDurationSec = Math.max(25, Math.min(60, Math.round(travelTime * 3.5)));
     activeRoutePath = res.path || [];
     activeMissionTracker = {
       incidentId: res.incidentId,
@@ -552,20 +570,25 @@ async function handleDispatchSingle(incidentId) {
       travelTimeMinutes: travelTime,
       durationSeconds: demoDurationSec,
       startTimeMs: Date.now(),
+      lastFrameMs: Date.now(),
+      accumulatedTransitMs: 0,
+      speedMultiplier: 1.0,
+      isPaused: false,
       path: res.path || [],
       completed: false
     };
 
-    await loadAllData();
-    await loadControlRoom();
-
-    // Auto-switch to Town Road Network view so live transit is immediately visible
+    // Auto-switch to Road Network view immediately so user sees complete path transit from node 0
     switchView("network");
     const mapSvg = $("roadMapSvg");
     if (mapSvg) {
+      renderSvgMap();
       mapSvg.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    showToast(`Assigned ${res.unitCode} to ${res.location} (${res.travelTimeMinutes} mins). Live tracking on Town Map.`, "success");
+    updateLiveMissionTimers();
+    loadAllData();
+    loadControlRoom();
+    showToast(`Assigned ${res.unitCode} to ${res.location} (${res.travelTimeMinutes} mins). Live tracking throughout complete path.`, "success");
   } catch (err) {
     showToast(err.message, "error");
   }
@@ -604,6 +627,7 @@ async function loadHistory() {
           const demoDurationSec = Math.max(22, Math.min(45, Math.round(travelTime * 3.5)));
           const ageMs = Date.now() - (rec.dispatchedTimestamp || 0);
           const startMs = ageMs > (demoDurationSec * 1000) ? Date.now() : (rec.dispatchedTimestamp || Date.now());
+          const initAccumMs = startMs === Date.now() ? 0 : Math.min(demoDurationSec * 1000, ageMs);
           activeMissionTracker = {
             incidentId: rec.incidentId,
             incidentCode: rec.incidentCode || `#${rec.incidentId}`,
@@ -613,6 +637,10 @@ async function loadHistory() {
             travelTimeMinutes: travelTime,
             durationSeconds: demoDurationSec,
             startTimeMs: startMs,
+            lastFrameMs: Date.now(),
+            accumulatedTransitMs: initAccumMs,
+            speedMultiplier: 1.0,
+            isPaused: false,
             path: pathSteps,
             completed: false
           };
@@ -728,7 +756,7 @@ function renderSvgMap() {
       const corridorUnderlay = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
       corridorUnderlay.setAttribute("points", ptsString);
       corridorUnderlay.setAttribute("fill", "none");
-      corridorUnderlay.setAttribute("stroke", "rgba(245, 158, 11, 0.22)");
+      corridorUnderlay.setAttribute("stroke", "rgba(245, 158, 11, 0.2)");
       corridorUnderlay.setAttribute("stroke-width", "14");
       corridorUnderlay.setAttribute("stroke-linecap", "round");
       corridorUnderlay.setAttribute("stroke-linejoin", "round");
@@ -832,7 +860,7 @@ function renderSvgMap() {
   }
 }
 
-// --- Live Vehicle Movement & Complete Path Tracking on SVG Map ---
+// --- Live Emergency Vehicle Movement & Complete Path Tracking on SVG Map ---
 function drawLiveVehicleMarker(svg) {
   if (!activeMissionTracker || !activeMissionTracker.path || activeMissionTracker.path.length === 0) {
     const old = svg.querySelector("#liveVehicleMarker");
@@ -846,8 +874,27 @@ function drawLiveVehicleMarker(svg) {
 
   let currX = coords[0].x;
   let currY = coords[0].y;
+  let headingAngle = 0;
   let isArrived = false;
   let currentSegIndex = 0;
+
+  // Initialize accumulator if not set
+  if (typeof activeMissionTracker.accumulatedTransitMs !== "number") {
+    activeMissionTracker.accumulatedTransitMs = 0;
+  }
+  if (!activeMissionTracker.lastFrameMs) {
+    activeMissionTracker.lastFrameMs = Date.now();
+  }
+
+  const now = Date.now();
+  const deltaMs = Math.min(100, Math.max(0, now - activeMissionTracker.lastFrameMs));
+  activeMissionTracker.lastFrameMs = now;
+
+  // Accumulate simulated time with speedMultiplier if not paused
+  if (!activeMissionTracker.isPaused) {
+    const spd = activeMissionTracker.speedMultiplier || 1.0;
+    activeMissionTracker.accumulatedTransitMs += deltaMs * spd;
+  }
 
   if (coords.length === 1) {
     // Single node: vehicle was already at destination
@@ -865,15 +912,17 @@ function drawLiveVehicleMarker(svg) {
     }
 
     if (totalDist > 0) {
-      const elapsedSec = (Date.now() - activeMissionTracker.startTimeMs) / 1000;
       const totalSec = activeMissionTracker.durationSeconds || 25;
-      const progressRatio = Math.min(1.0, Math.max(0, elapsedSec / totalSec));
+      const progressRatio = Math.min(1.0, activeMissionTracker.accumulatedTransitMs / (totalSec * 1000));
       isArrived = progressRatio >= 1.0;
 
       if (isArrived) {
         currX = coords[coords.length - 1].x;
         currY = coords[coords.length - 1].y;
         currentSegIndex = coords.length - 2;
+        const lastDx = coords[coords.length - 1].x - coords[coords.length - 2].x;
+        const lastDy = coords[coords.length - 1].y - coords[coords.length - 2].y;
+        headingAngle = Math.atan2(lastDy, lastDx) * 180 / Math.PI;
       } else {
         const targetDist = progressRatio * totalDist;
         let accumulated = 0;
@@ -884,6 +933,10 @@ function drawLiveVehicleMarker(svg) {
             currX = coords[i].x + (coords[i + 1].x - coords[i].x) * t;
             currY = coords[i].y + (coords[i + 1].y - coords[i].y) * t;
             currentSegIndex = i;
+
+            const dx = coords[i + 1].x - coords[i].x;
+            const dy = coords[i + 1].y - coords[i].y;
+            headingAngle = Math.atan2(dy, dx) * 180 / Math.PI;
             break;
           }
           accumulated += segDistances[i];
@@ -907,6 +960,13 @@ function drawLiveVehicleMarker(svg) {
       pts.push(`${currX.toFixed(1)},${currY.toFixed(1)}`);
     }
     travLine.setAttribute("points", pts.join(" "));
+  }
+
+  // Simulated live speed
+  const liveSpeedKmh = isArrived ? 0 : Math.round(52 + Math.sin(currX * 0.1) * 8);
+  const speedLabel = $("mapLiveSpeedLabel");
+  if (speedLabel) {
+    speedLabel.textContent = isArrived ? "Speed: 0 km/h (Arrived)" : `Speed: ${liveSpeedKmh} km/h (Priority)`;
   }
 
   // 2. Update Map Banner Subtext & Waypoints Breadcrumbs HUD
@@ -951,63 +1011,100 @@ function drawLiveVehicleMarker(svg) {
     }).join("");
   }
 
-  // 3. Create or Reuse Vehicle Marker Group in-place
+  // 3. Create or Reuse High-Fidelity Emergency Vehicle Graphic in-place
   let markerG = svg.querySelector("#liveVehicleMarker");
   if (!markerG) {
     markerG = document.createElementNS("http://www.w3.org/2000/svg", "g");
     markerG.setAttribute("id", "liveVehicleMarker");
     markerG.setAttribute("class", "vehicle-live-marker");
 
+    // Rotating heading group (chassis, headlights, sirens, wheels)
+    const headingG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    headingG.setAttribute("class", "vehicle-heading-group");
+
+    // Headlight forward light beam
+    const beam = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    beam.setAttribute("class", "vehicle-headlight-beam");
+    beam.setAttribute("points", "14,-4 58,-24 58,24 14,4");
+    beam.setAttribute("fill", "rgba(254, 240, 138, 0.22)");
+    headingG.appendChild(beam);
+
+    // Radar pulse beacon (under vehicle)
     const ping = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     ping.setAttribute("class", "marker-ping");
     ping.setAttribute("cx", "0");
     ping.setAttribute("cy", "0");
     ping.setAttribute("r", "16");
     ping.setAttribute("fill", "none");
-    ping.setAttribute("stroke-width", "2.5");
-    markerG.appendChild(ping);
+    ping.setAttribute("stroke-width", "2");
+    headingG.appendChild(ping);
 
-    const aura = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    aura.setAttribute("class", "marker-aura");
-    aura.setAttribute("cx", "0");
-    aura.setAttribute("cy", "0");
-    aura.setAttribute("r", "12");
-    markerG.appendChild(aura);
+    // Main truck chassis
+    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    body.setAttribute("class", "truck-chassis");
+    body.setAttribute("x", "-14");
+    body.setAttribute("y", "-8");
+    body.setAttribute("width", "28");
+    body.setAttribute("height", "16");
+    body.setAttribute("rx", "3.5");
+    body.setAttribute("fill", "#dc2626");
+    body.setAttribute("stroke", "#ffffff");
+    body.setAttribute("stroke-width", "1.5");
+    headingG.appendChild(body);
 
-    const core = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    core.setAttribute("class", "marker-core");
-    core.setAttribute("cx", "0");
-    core.setAttribute("cy", "0");
-    core.setAttribute("r", "9.5");
-    core.setAttribute("stroke", "#ffffff");
-    core.setAttribute("stroke-width", "2");
-    markerG.appendChild(core);
+    // Front cab
+    const cab = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    cab.setAttribute("x", "4");
+    cab.setAttribute("y", "-7");
+    cab.setAttribute("width", "9");
+    cab.setAttribute("height", "14");
+    cab.setAttribute("rx", "2");
+    cab.setAttribute("fill", "#991b1b");
+    headingG.appendChild(cab);
 
-    const coreText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    coreText.setAttribute("class", "marker-core-text");
-    coreText.setAttribute("x", "0");
-    coreText.setAttribute("y", "3.5");
-    coreText.setAttribute("text-anchor", "middle");
-    coreText.setAttribute("fill", "#ffffff");
-    coreText.setAttribute("font-size", "7.5");
-    coreText.setAttribute("font-family", "JetBrains Mono, monospace");
-    coreText.setAttribute("font-weight", "800");
-    markerG.appendChild(coreText);
+    // Windshield
+    const wind = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    wind.setAttribute("x", "5");
+    wind.setAttribute("y", "-5.5");
+    wind.setAttribute("width", "4");
+    wind.setAttribute("height", "11");
+    wind.setAttribute("rx", "1.5");
+    wind.setAttribute("fill", "#38bdf8");
+    wind.setAttribute("opacity", "0.9");
+    headingG.appendChild(wind);
 
-    const pillG = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    pillG.setAttribute("class", "marker-pill-group");
-    pillG.setAttribute("transform", "translate(0, -20)");
+    // Siren strobe lights
+    const sirenRed = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    sirenRed.setAttribute("class", "siren-flash-red");
+    sirenRed.setAttribute("cx", "2");
+    sirenRed.setAttribute("cy", "-3.5");
+    sirenRed.setAttribute("r", "2");
+    headingG.appendChild(sirenRed);
+
+    const sirenBlue = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    sirenBlue.setAttribute("class", "siren-flash-blue");
+    sirenBlue.setAttribute("cx", "2");
+    sirenBlue.setAttribute("cy", "3.5");
+    sirenBlue.setAttribute("r", "2");
+    headingG.appendChild(sirenBlue);
+
+    markerG.appendChild(headingG);
+
+    // Upright floating label badge (non-rotating, horizontal)
+    const uiG = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    uiG.setAttribute("class", "vehicle-ui-group");
+    uiG.setAttribute("transform", "translate(0, -22)");
 
     const pillRect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
     pillRect.setAttribute("class", "marker-pill-rect");
-    pillRect.setAttribute("x", "-38");
+    pillRect.setAttribute("x", "-40");
     pillRect.setAttribute("y", "-10");
-    pillRect.setAttribute("width", "76");
-    pillRect.setAttribute("height", "19");
+    pillRect.setAttribute("width", "80");
+    pillRect.setAttribute("height", "20");
     pillRect.setAttribute("rx", "5");
     pillRect.setAttribute("fill", "#090d16");
     pillRect.setAttribute("stroke-width", "1.5");
-    pillG.appendChild(pillRect);
+    uiG.appendChild(pillRect);
 
     const pillText = document.createElementNS("http://www.w3.org/2000/svg", "text");
     pillText.setAttribute("class", "marker-pill-text");
@@ -1018,29 +1115,31 @@ function drawLiveVehicleMarker(svg) {
     pillText.setAttribute("font-size", "8.5");
     pillText.setAttribute("font-family", "JetBrains Mono, monospace");
     pillText.setAttribute("font-weight", "700");
-    pillG.appendChild(pillText);
+    uiG.appendChild(pillText);
 
-    markerG.appendChild(pillG);
+    markerG.appendChild(uiG);
     svg.appendChild(markerG);
   }
 
-  // Update transform coordinates directly
+  // Update position
   markerG.setAttribute("transform", `translate(${currX.toFixed(2)}, ${currY.toFixed(2)})`);
 
-  // Update visual state
+  // Rotate vehicle chassis along road heading
+  const headingG = markerG.querySelector(".vehicle-heading-group");
+  if (headingG) {
+    headingG.setAttribute("transform", `rotate(${headingAngle.toFixed(1)})`);
+  }
+
+  // Update beacon & pill badge
   const ping = markerG.querySelector(".marker-ping");
-  const aura = markerG.querySelector(".marker-aura");
-  const core = markerG.querySelector(".marker-core");
-  const coreText = markerG.querySelector(".marker-core-text");
   const pillRect = markerG.querySelector(".marker-pill-rect");
   const pillText = markerG.querySelector(".marker-pill-text");
 
   if (ping) ping.setAttribute("stroke", isArrived ? "#10b981" : "#ef4444");
-  if (aura) aura.setAttribute("fill", isArrived ? "rgba(16, 185, 129, 0.25)" : "rgba(239, 68, 68, 0.35)");
-  if (core) core.setAttribute("fill", isArrived ? "#059669" : "#dc2626");
-  if (coreText) coreText.textContent = (activeMissionTracker.unitCode || "VEH").substring(0, 2);
   if (pillRect) pillRect.setAttribute("stroke", isArrived ? "#10b981" : "#f59e0b");
-  if (pillText) pillText.textContent = isArrived ? "ON SCENE" : `${activeMissionTracker.unitCode} EN ROUTE`;
+  if (pillText) {
+    pillText.textContent = isArrived ? "ON SCENE" : `${activeMissionTracker.unitCode} • ${liveSpeedKmh} km/h`;
+  }
 
   // Continue smooth 60fps frame loop while in transit
   if (!isArrived) {
@@ -1057,7 +1156,7 @@ function drawLiveVehicleMarker(svg) {
   }
 }
 
-// --- Live Mission Countdown & ETA Formatter (Feature C) ---
+// --- Live Mission Countdown & ETA Formatter ---
 function formatMmSs(totalSec) {
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
@@ -1071,8 +1170,8 @@ function updateLiveMissionTimers() {
     return;
   }
 
-  const elapsedSec = (Date.now() - activeMissionTracker.startTimeMs) / 1000;
   const totalSec = activeMissionTracker.durationSeconds || 25;
+  const elapsedSec = (activeMissionTracker.accumulatedTransitMs || 0) / 1000;
   const remainingSec = Math.max(0, Math.ceil(totalSec - elapsedSec));
   const progressRatio = Math.min(1.0, elapsedSec / totalSec);
   const progressPct = Math.min(100, Math.round(progressRatio * 100));
@@ -1146,16 +1245,45 @@ function updateLiveMissionTimers() {
   });
 }
 
-// --- Replay Vehicle Transit Animation (Examiner Demo Feature) ---
+// --- Tracking Speed Controls & Pause/Resume ---
+function setTrackingSpeed(speed) {
+  if (!activeMissionTracker) return;
+  activeMissionTracker.speedMultiplier = speed;
+  [1, 2, 4].forEach(s => {
+    const btn = $("btnSpeed" + s + "x");
+    if (btn) {
+      if (s === speed) btn.classList.add("active");
+      else btn.classList.remove("active");
+    }
+  });
+  showToast(`Live tracking speed set to ${speed}x.`, "info");
+}
+
+function toggleMissionPause() {
+  if (!activeMissionTracker) return;
+  activeMissionTracker.isPaused = !activeMissionTracker.isPaused;
+  const btn = $("mapPauseResumeBtn");
+  if (btn) {
+    btn.textContent = activeMissionTracker.isPaused ? "Resume" : "Pause";
+  }
+  showToast(activeMissionTracker.isPaused ? "Vehicle transit paused." : "Vehicle transit resumed.", "info");
+}
+
+// --- Replay Vehicle Transit Animation ---
 function replayVehicleTransit() {
   if (!activeMissionTracker || !activeMissionTracker.path || activeMissionTracker.path.length === 0) {
     showToast("No active mission route available to replay.", "info");
     return;
   }
 
-  // Reset clock to right now
-  activeMissionTracker.startTimeMs = Date.now();
+  // Reset clock to 0
+  activeMissionTracker.accumulatedTransitMs = 0;
+  activeMissionTracker.lastFrameMs = Date.now();
+  activeMissionTracker.isPaused = false;
   activeMissionTracker.completed = false;
+
+  const pauseBtn = $("mapPauseResumeBtn");
+  if (pauseBtn) pauseBtn.textContent = "Pause";
 
   // Make sure Road Network view is active so user sees it immediately
   switchView("network");
@@ -1167,10 +1295,12 @@ function replayVehicleTransit() {
   }
 
   updateLiveMissionTimers();
-  showToast(`Replaying Dijkstra transit for ${activeMissionTracker.unitCode} along shortest path.`, "success");
+  showToast(`Replaying complete Dijkstra path tracking for ${activeMissionTracker.unitCode}.`, "success");
 }
 
 window.replayVehicleTransit = replayVehicleTransit;
+window.setTrackingSpeed = setTrackingSpeed;
+window.toggleMissionPause = toggleMissionPause;
 
 function populateRoadClosureSelect() {
   const sel = $("roadClosureSelect");
@@ -1350,7 +1480,7 @@ async function handleDispatch() {
     }).join("");
 
     const travelTime = res.travelTimeMinutes || 5;
-    const demoDurationSec = Math.max(22, Math.min(45, Math.round(travelTime * 3.5)));
+    const demoDurationSec = Math.max(25, Math.min(60, Math.round(travelTime * 3.5)));
     activeMissionTracker = {
       incidentId: res.incidentId,
       incidentCode: res.incidentCode || `#${res.incidentId}`,
@@ -1361,20 +1491,24 @@ async function handleDispatch() {
       travelTimeMinutes: travelTime,
       durationSeconds: demoDurationSec,
       startTimeMs: Date.now(),
+      lastFrameMs: Date.now(),
+      accumulatedTransitMs: 0,
+      speedMultiplier: 1.0,
+      isPaused: false,
       path: res.path || [],
       completed: false
     };
 
-    updateLiveMissionTimers();
-    await loadAllData();
-
-    // Auto-switch to Town Road Network view so live transit is immediately visible
+    // Auto-switch to Road Network view immediately so user sees complete path transit from node 0
     switchView("network");
     const mapSvg = $("roadMapSvg");
     if (mapSvg) {
+      renderSvgMap();
       mapSvg.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    showToast(`Dispatched unit ${res.unitCode} to ${res.location}. Live tracking on Town Map.`, "success");
+    updateLiveMissionTimers();
+    loadAllData();
+    showToast(`Dispatched unit ${res.unitCode} to ${res.location}. Tracking complete path live on Town Map.`, "success");
   } catch (err) {
     msgEl.textContent = err.message;
     msgEl.style.color = "var(--brand-red-active)";

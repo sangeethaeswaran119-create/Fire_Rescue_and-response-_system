@@ -431,15 +431,25 @@
                 </div>
               </div>
               <div class="mission-banner-right">
-                <span id="mapMissionEtaText" class="mission-banner-eta">ETA: --:--</span>
+                <div class="speed-control-group">
+                  <span class="speed-label">Speed:</span>
+                  <button type="button" class="btn-speed-pill active" id="btnSpeed1x" data-speed="1">1x</button>
+                  <button type="button" class="btn-speed-pill" id="btnSpeed2x" data-speed="2">2x</button>
+                  <button type="button" class="btn-speed-pill" id="btnSpeed4x" data-speed="4">4x</button>
+                </div>
+                <button id="mapPauseResumeBtn" type="button" class="btn btn-sm btn-secondary" style="font-weight:700;">Pause</button>
                 <button id="mapReplayRouteBtn" type="button" class="btn btn-sm btn-secondary" style="font-weight:700;">Replay Transit</button>
+                <span id="mapMissionEtaText" class="mission-banner-eta">ETA: --:--</span>
                 <button id="mapCompleteMissionBtn" type="button" class="btn btn-sm btn-complete-action">Mark Mission Completed</button>
               </div>
             </div>
 
             <!-- Complete Path Waypoint Breadcrumbs Tracker -->
             <div id="mapPathWaypointsWrap" class="map-waypoints-tracker">
-              <div class="waypoints-label">Dijkstra Shortest Path Tracking:</div>
+              <div class="waypoints-header-row">
+                <span class="waypoints-label">Dijkstra Shortest Path Live Telemetry:</span>
+                <span id="mapLiveSpeedLabel" class="live-speed-badge">Speed: 55 km/h</span>
+              </div>
               <div id="mapPathWaypoints" class="map-waypoints-list"></div>
             </div>
 
