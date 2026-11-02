@@ -1275,44 +1275,6 @@ body {
   filter: drop-shadow(0 0 6px #10b981);
 }
 
-.speed-control-group {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 4px;
-  padding: 2px 6px;
-}
-
-.speed-label {
-  font-size: 11px;
-  color: #94a3b8;
-  font-weight: 600;
-  margin-right: 2px;
-}
-
-.btn-speed-pill {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  font-size: 11px;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.btn-speed-pill:hover {
-  color: #ffffff;
-}
-
-.btn-speed-pill.active {
-  background: #2563eb;
-  color: #ffffff;
-}
 
 .waypoints-header-row {
   display: flex;

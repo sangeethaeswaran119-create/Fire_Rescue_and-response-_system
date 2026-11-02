@@ -352,35 +352,11 @@ function initEventListeners() {
     });
   }
 
-  // Replay and Speed / Pause Controls
-  const mapReplayBtn = $("mapReplayRouteBtn");
-  if (mapReplayBtn) {
-    mapReplayBtn.addEventListener("click", replayVehicleTransit);
-  }
-
-  const homeReplayBtn = $("btnReplayHome");
-  if (homeReplayBtn) {
-    homeReplayBtn.addEventListener("click", replayVehicleTransit);
-  }
-
-  const pauseBtn = $("mapPauseResumeBtn");
-  if (pauseBtn) {
-    pauseBtn.addEventListener("click", toggleMissionPause);
-  }
-
+  // Demo transit trigger
   const demoRunBtn = $("btnDemoRunTransit");
   if (demoRunBtn) {
     demoRunBtn.addEventListener("click", runDemoTransit);
   }
-
-  [1, 2, 4].forEach(spd => {
-    const btn = $("btnSpeed" + spd + "x");
-    if (btn) {
-      btn.addEventListener("click", () => {
-        setTrackingSpeed(spd);
-      });
-    }
-  });
 
   // Map Active Mission Complete Button (Feature C)
   const mapCompleteBtn = $("mapCompleteMissionBtn");
@@ -1252,59 +1228,6 @@ function updateLiveMissionTimers() {
   });
 }
 
-// --- Tracking Speed Controls & Pause/Resume ---
-function setTrackingSpeed(speed) {
-  if (!activeMissionTracker) return;
-  activeMissionTracker.speedMultiplier = speed;
-  [1, 2, 4].forEach(s => {
-    const btn = $("btnSpeed" + s + "x");
-    if (btn) {
-      if (s === speed) btn.classList.add("active");
-      else btn.classList.remove("active");
-    }
-  });
-  showToast(`Live tracking speed set to ${speed}x.`, "info");
-}
-
-function toggleMissionPause() {
-  if (!activeMissionTracker) return;
-  activeMissionTracker.isPaused = !activeMissionTracker.isPaused;
-  const btn = $("mapPauseResumeBtn");
-  if (btn) {
-    btn.textContent = activeMissionTracker.isPaused ? "Resume" : "Pause";
-  }
-  showToast(activeMissionTracker.isPaused ? "Vehicle transit paused." : "Vehicle transit resumed.", "info");
-}
-
-// --- Replay Vehicle Transit Animation ---
-function replayVehicleTransit() {
-  if (!activeMissionTracker || !activeMissionTracker.path || activeMissionTracker.path.length === 0) {
-    showToast("No active mission route available to replay.", "info");
-    return;
-  }
-
-  // Reset clock to 0
-  activeMissionTracker.accumulatedTransitMs = 0;
-  activeMissionTracker.lastFrameMs = Date.now();
-  activeMissionTracker.isPaused = false;
-  activeMissionTracker.completed = false;
-
-  const pauseBtn = $("mapPauseResumeBtn");
-  if (pauseBtn) pauseBtn.textContent = "Pause";
-
-  // Make sure Road Network view is active so user sees it immediately
-  switchView("network");
-
-  const mapSvg = $("roadMapSvg");
-  if (mapSvg) {
-    renderSvgMap();
-    mapSvg.scrollIntoView({ behavior: "smooth", block: "center" });
-  }
-
-  updateLiveMissionTimers();
-  showToast(`Replaying complete Dijkstra path tracking for ${activeMissionTracker.unitCode}.`, "success");
-}
-
 // --- Demo Vehicle Transit Runner (Instant Visual Impact) ---
 function runDemoTransit() {
   activeRoutePath = ["Station-A", "Junction-1", "Market", "Hospital"];
@@ -1326,9 +1249,6 @@ function runDemoTransit() {
     completed: false
   };
 
-  const pauseBtn = $("mapPauseResumeBtn");
-  if (pauseBtn) pauseBtn.textContent = "Pause";
-
   switchView("network");
   const mapSvg = $("roadMapSvg");
   if (mapSvg) {
@@ -1341,9 +1261,6 @@ function runDemoTransit() {
 }
 
 window.runDemoTransit = runDemoTransit;
-window.replayVehicleTransit = replayVehicleTransit;
-window.setTrackingSpeed = setTrackingSpeed;
-window.toggleMissionPause = toggleMissionPause;
 
 function populateRoadClosureSelect() {
   const sel = $("roadClosureSelect");
